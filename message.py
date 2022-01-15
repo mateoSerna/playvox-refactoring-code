@@ -1,6 +1,7 @@
 import json
 import os
 from enum import Enum
+from typing import Optional
 
 import boto3
 
@@ -29,6 +30,9 @@ class Message(Orm):
 
     @staticmethod
     def send_to_sns(message: str, phone_number: str) -> None:
+        """Sends a notification using the SNS service to a phone number (SMS).
+        
+        I'd use docstrings to improve documentation."""
         try:
             sns_client.publish(PhoneNumber=phone_number, Message=message)
         except Exception as e:
@@ -39,8 +43,9 @@ class Message(Orm):
         for user in self.__get_users():
             numbers = json.loads(user["phone_numbers"])
             phone_number = self.__get_phone_number(numbers.values())
-            message = self.__get_message(user)
-            self.send_to_sns(message, phone_number)
+
+            if message := self.__get_message(user):
+                self.send_to_sns(message, phone_number)
 
     # I'd use the access modifiers to identify what methods can only be
     # used in the class instance and what others are public, etc.
@@ -82,10 +87,11 @@ class Message(Orm):
             raise Exception(f"Error getting user: {e}")
         return {}
 
-    def __get_message(self, user: dict) -> str:
-        membership = next(
+    def __get_message(self, user: dict) -> Optional[str]:
+        message = None
+        membership, type_message = next(
             (
-                user_info["membership"]
+                (user_info["membership"], user_info["type"])
                 for user_info in self.users
                 if str(user_info["profile"]) == str(user["profile"])
             ),
@@ -93,8 +99,14 @@ class Message(Orm):
         )
 
         # I'd use the advantages of each feature of python: for example the f strings
-        # to do better and easier concatenations.
-        return (
-            f"Hey {user['first_name']} {user['last_name']} we have some information about your {membership} account, "
-            f"please go to {user['service_link']} to get more details."
-        )
+        # to do better and easier concatenations, the walrus operator (:=) or the addition
+        # of the new `match case` statement in python 3.10.
+        match type_message:
+            case Types.INFORMATION_ACCOUNT.value:
+                message = (
+                    f"Hey {user['first_name']} {user['last_name']} we have some information "
+                    f"about your {membership} account, please go to {user['service_link']} "
+                    f"to get more details."
+                )
+
+        return message

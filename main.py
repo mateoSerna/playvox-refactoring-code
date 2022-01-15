@@ -42,6 +42,8 @@ async def main():
                     }
                 )
 
+                # TODO Check if is the last line to send the last messages
+                # that may be less than the `CHUNK_SIZE`
                 if len(users) == CHUNK_SIZE:
                     try:
                         # I'd separate the logic of reading the file and processing
